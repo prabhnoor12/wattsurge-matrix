@@ -1543,7 +1543,14 @@ function buildHomepage(unitComparisons, canItRunPairs, sitemapUrls, totalPagesCo
       '@type': 'Dataset',
       name: 'Appliance Starting Surge Watts and Portable Power Station Runtime Matrix',
       description: 'Engineering dataset of running watts, starting inrush surge watts, duty cycles, and inverter efficiency runtime calculations.',
-      url: `${SITE_URL}/`
+      url: `${SITE_URL}/`,
+      license: 'https://creativecommons.org/licenses/by/4.0/',
+      isAccessibleForFree: true,
+      creator: {
+        '@type': 'Organization',
+        name: SITE_NAME,
+        url: `${SITE_URL}/`
+      }
     },
     mainContent,
     totalPagesCount
