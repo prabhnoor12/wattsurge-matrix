@@ -1,0 +1,19 @@
+{
+  "name": "wattsurge-matrix",
+  "version": "1.0.0",
+  "description": "WattSurgeMatrix ('Can It Run?') — 2,200+ Page Programmatic SEO Appliance Surge, Blackout Runtime & Power Station Sizing Matrix",
+  "scripts": {
+    "seed": "node src/seed-datasets.js",
+    "build": "node src/build.js",
+    "serve": "npx -y serve dist -l 4174",
+    "deploy": "node src/build.js && npx -y wrangler deploy"
+  },
+  "keywords": [
+    "programmatic-seo",
+    "solar-generator-calculator",
+    "power-station-runtime",
+    "starting-surge-watts",
+    "cloudflare-pages"
+  ],
+  "license": "MIT"
+}

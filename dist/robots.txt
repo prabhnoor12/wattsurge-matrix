@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://wattsurgematrix.com/sitemap.xml
