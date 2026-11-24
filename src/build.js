@@ -356,6 +356,11 @@ function renderLayout({ title, description, canonicalPath, breadcrumbs, schemaJs
           <a href="/brands/ecoflow/">EcoFlow</a>
           <a href="/brands/jackery/">Jackery</a>
           <a href="/brands/anker-solix/">Anker</a>
+          <a href="/tools/24-hour-blackout-simulator/">24h Timeline</a>
+          <a href="/tools/generator-fuel-calculator/">Fuel Calc</a>
+          <a href="/tools/power-station-finder/">Unit Finder</a>
+          <a href="/tools/storm-prep-checklist/">Storm Checklist</a>
+          <button type="button" id="btn-open-plans" class="plans-btn" aria-label="Open My Blackout Plans">📌 My Plans (<span id="plans-count">0</span>)</button>
           <button type="button" id="theme-toggle-btn" class="theme-btn" aria-label="Switch color scheme">☾ Dark</button>
         </nav>
       </div>
@@ -371,6 +376,15 @@ function renderLayout({ title, description, canonicalPath, breadcrumbs, schemaJs
   <div class="layout-shell">
     <main id="main-content">
       ${mainContent}
+      <section class="sister-widget deferred-section" aria-label="Sister Engineering Portals">
+        <h3 style="margin:0;font-size:0.95rem;">🔗 Complete Your Backup Power, Transfer Switch &amp; Off-Grid Build</h3>
+        <div class="sister-grid">
+          <a class="sister-card" href="https://wiresizematrix.com" rel="noopener"><strong>⚡ WireSizeMatrix.com</strong>Installing a 30A/50A generator inlet box or interlock transfer switch? Size exact NEC wire gauge →</a>
+          <a class="sister-card" href="https://minisplitbtumatrix.com" rel="noopener"><strong>❄️ MiniSplitBTUMatrix.com</strong>Running a soft-start inverter mini-split off solar &amp; LiFePO4 batteries? Size exact BTU &amp; watts →</a>
+          <a class="sister-card" href="https://slabyardmatrix.com" rel="noopener"><strong>🧱 SlabYardMatrix.com</strong>Pouring a 3×5 standby generator concrete pad or shed slab? Calculate exact bags &amp; yards →</a>
+          <a class="sister-card" href="https://townmatrix.com" rel="noopener"><strong>🚛 TownMatrix.com</strong>Hauling your RV &amp; solar generator setup? Verify truck payload &amp; trailer tongue weight →</a>
+        </div>
+      </section>
     </main>
 
     <aside class="ad-rail-sticky" aria-label="Sidebar Calculations & Sponsored Units">
@@ -412,6 +426,16 @@ function renderLayout({ title, description, canonicalPath, breadcrumbs, schemaJs
   </footer>
 
   ${renderAdUnit('anchor', 'bottom-sticky-anchor', 2)}
+
+  <div class="binder-backdrop" id="plans-backdrop"></div>
+  <aside class="binder-drawer" id="plans-drawer" aria-label="My Saved Blackout Power Plans">
+    <div style="display:flex;justify-content:space-between;align-items:center;border-block-end:2px solid var(--text);padding-block-end:0.6rem;margin-block-end:0.75rem;">
+      <strong style="font-family:var(--font-mono);font-size:0.95rem;">📌 My Blackout Power Plans</strong>
+      <button type="button" id="btn-close-plans" class="theme-btn">✕ Close</button>
+    </div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-block-start:0;">Saved locally in your browser so you can reopen your emergency battery &amp; generator load tests before any hurricane, ice storm, or RV trip.</p>
+    <div id="plans-items-list"></div>
+  </aside>
 
   <script defer src="/assets/${hashedJsFilename}"></script>
 </body>
@@ -590,6 +614,7 @@ function buildCanItRunPages(canItRunPairs, sitemapUrls, totalPagesCount) {
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0.5rem;margin-block-end:0.5rem;">
           <h2 style="border:none;margin:0;padding:0;">Interactive Multi-Appliance Load Stacker & Surge Simulator</h2>
           <div style="display:flex;flex-wrap:wrap;gap:0.4rem;">
+            <button type="button" id="btn-save-plan" class="plans-btn">📌 Save Blackout Plan</button>
             <button type="button" id="btn-copy-surge-link" class="preset-btn">Copy Shareable Power Plan</button>
             <button type="button" id="btn-print-worksheet" class="preset-btn">⎙ Print Blackout Worksheet</button>
           </div>
@@ -683,6 +708,16 @@ function buildCanItRunPages(canItRunPairs, sitemapUrls, totalPagesCount) {
               <span id="gauge-txt-eff">--</span>
             </div>
             <div class="gauge-track"><div class="gauge-fill" id="gauge-bar-eff"></div></div>
+          </div>
+        </div>
+
+        <div class="next-tools-bar">
+          <strong style="font-size:0.82rem;font-family:var(--font-mono);">NEXT-STEP BLACKOUT &amp; UPGRADE TOOLS FOR THIS LOAD:</strong>
+          <div class="next-tools-grid">
+            <a class="next-tool-link" href="/tools/24-hour-blackout-simulator/?wh=${u.capacityWh}&amp;run=${a.runningWatts}&amp;name=${encodeURIComponent(u.name)}"><strong>📈 24-Hour Blackout Curve →</strong>Simulate hour-by-hour daytime solar vs overnight battery drain</a>
+            <a class="next-tool-link" href="/tools/power-station-finder/?run=${a.runningWatts}&amp;surge=${a.surgeWatts}"><strong>🔍 Find Units That Pass Surge →</strong>Auto-rank all ${powerUnits.length} power stations &amp; generators by lowest $/Wh</a>
+            <a class="next-tool-link" href="/tools/generator-fuel-calculator/?watts=${a.runningWatts}"><strong>⛽ Multi-Day Storm Fuel Calc →</strong>Gasoline gallons, 20lb propane tanks &amp; 30A/50A cord gauge</a>
+            <a class="next-tool-link" href="/tools/storm-prep-checklist/"><strong>📋 Fridge-Door Storm Checklist →</strong>Auto-saved blackout readiness &amp; breaker-box print sheet</a>
           </div>
         </div>
       </section>
@@ -1698,6 +1733,247 @@ ${sitemapUrls.map((u) => `  <url><loc>${u}</loc><changefreq>monthly</changefreq>
   );
 }
 
+function buildDedicatedPowerToolPages(sitemapUrls, totalPagesCount) {
+  const datasetCreator = { '@type': 'Organization', name: SITE_NAME, url: `${SITE_URL}/` };
+
+  // TOOL 1: 24-Hour Hour-by-Hour Blackout Survival & Solar Curve Simulator
+  writePage(
+    'tools/24-hour-blackout-simulator',
+    renderLayout({
+      title: `24-Hour Blackout Survival & Solar Recharge Curve Simulator — ${SITE_NAME}`,
+      description: `Simulate hour-by-hour daytime solar panel input vs overnight refrigerator, Starlink, and CPAP battery drain across a 24-hour blackout with a live State-of-Charge curve.`,
+      canonicalPath: 'tools/24-hour-blackout-simulator',
+      breadcrumbs: [
+        { label: 'Home', url: '/' },
+        { label: 'Power Tools', url: '/tools/24-hour-blackout-simulator/' },
+        { label: '24-Hour Blackout Curve', url: '/tools/24-hour-blackout-simulator/' }
+      ],
+      schemaJson: [
+        { '@context': 'https://schema.org', '@type': 'WebApplication', name: '24-Hour Blackout Battery & Solar Curve Simulator', url: `${SITE_URL}/tools/24-hour-blackout-simulator/`, applicationCategory: 'UtilitiesApplication' },
+        { '@context': 'https://schema.org', '@type': 'Dataset', name: '24-Hour Off-Grid Solar & Battery Discharge Model', description: 'Hourly battery State-of-Charge curve comparing daytime solar harvest vs overnight AC inverter load.', url: `${SITE_URL}/tools/24-hour-blackout-simulator/`, isAccessibleForFree: true, license: 'https://creativecommons.org/licenses/by/4.0/', creator: datasetCreator }
+      ],
+      totalPagesCount,
+      mainContent: `
+        <article id="hero-panel" class="panel isolated-widget">
+          <span class="brand-badge">HOURLY SOLAR EQUILIBRIUM SIMULATOR</span>
+          <h1>24-Hour Blackout Survival &amp; Solar Recharge Curve</h1>
+          <p class="subtitle">Model a full 24-hour outage (6 AM → 6 AM) factoring in <strong>daytime vs. overnight appliance draw</strong>, <strong>85% AC inverter efficiency</strong>, and <strong>peak solar harvest hours (10 AM – 4 PM)</strong> to see if your battery survives until sunrise.</p>
+          <div id="sim24-unit-badge" style="font-family:var(--font-mono);font-size:0.82rem;font-weight:700;margin-block-end:0.6rem;"></div>
+
+          <section id="tool-24h-blackout">
+            <div class="tool-input-grid">
+              <div class="tool-field"><label for="s24-wh">Battery Capacity (Wh)</label><input id="s24-wh" type="number" min="250" max="20000" step="100" value="2048"></div>
+              <div class="tool-field"><label for="s24-day-w">Daytime Avg Load (6AM–10PM, Watts)</label><input id="s24-day-w" type="number" min="10" max="3000" step="10" value="180"></div>
+              <div class="tool-field"><label for="s24-night-w">Overnight Avg Load (10PM–6AM, Watts)</label><input id="s24-night-w" type="number" min="10" max="3000" step="10" value="110"></div>
+              <div class="tool-field"><label for="s24-solar">Attached Solar Panels (Watts): <strong id="s24-solar-val">400W</strong></label><input id="s24-solar" type="range" min="0" max="2400" step="100" value="400"></div>
+              <div class="tool-field"><label for="s24-sun">Peak Sun Hours / Day: <strong id="s24-sun-val">4.5 hrs</strong></label><input id="s24-sun" type="range" min="0" max="7" step="0.5" value="4.5"></div>
+              <div class="tool-field"><label for="s24-start">Starting Battery Charge (%)</label><input id="s24-start" type="number" min="20" max="100" value="100"></div>
+            </div>
+
+            <div class="verdict-banner" id="s24-verdict" data-status="safe" role="status" aria-live="polite">
+              <div class="verdict-title"><span id="s24-verdict-title">Simulating 24-Hour Outage...</span><span class="badge badge-safe" id="s24-verdict-badge">READY</span></div>
+              <p id="s24-verdict-desc" style="margin:0;font-size:0.88rem;"></p>
+            </div>
+
+            <div class="soc-svg-wrap">
+              <svg id="s24-svg" viewBox="0 0 640 210" role="img" aria-label="24-hour battery state of charge line chart">
+                <line x1="45" y1="20" x2="45" y2="175" stroke="currentColor" opacity="0.35"/>
+                <line x1="45" y1="175" x2="620" y2="175" stroke="currentColor" opacity="0.35"/>
+                <line x1="45" y1="97" x2="620" y2="97" stroke="currentColor" opacity="0.18" stroke-dasharray="4 4"/>
+                <rect x="141" y="20" width="144" height="155" fill="#fbbf24" opacity="0.12"/>
+                <text x="213" y="34" text-anchor="middle" fill="#d97706" font-family="monospace" font-size="10" font-weight="700">SOLAR WINDOW (10AM–4PM)</text>
+                <text x="38" y="25" text-anchor="end" fill="currentColor" font-family="monospace" font-size="10">100%</text>
+                <text x="38" y="101" text-anchor="end" fill="currentColor" font-family="monospace" font-size="10">50%</text>
+                <text x="38" y="178" text-anchor="end" fill="currentColor" font-family="monospace" font-size="10">0%</text>
+                <text x="45" y="195" fill="currentColor" font-family="monospace" font-size="10">6 AM</text>
+                <text x="188" y="195" fill="currentColor" font-family="monospace" font-size="10">12 PM</text>
+                <text x="332" y="195" fill="currentColor" font-family="monospace" font-size="10">6 PM</text>
+                <text x="476" y="195" fill="currentColor" font-family="monospace" font-size="10">12 AM</text>
+                <text x="615" y="195" text-anchor="end" fill="currentColor" font-family="monospace" font-size="10">6 AM (+24h)</text>
+                <polyline id="s24-curve" fill="none" stroke="#0369a1" stroke-width="3" points="45,20 620,175"/>
+              </svg>
+            </div>
+
+            <div class="spec-kpi-grid">
+              <div class="kpi-box highlight"><span class="kpi-label">24h Daily Energy Burn</span><span class="kpi-value" id="s24-out-burn">--</span><span class="kpi-sub">Incl. 15% AC inverter loss</span></div>
+              <div class="kpi-box"><span class="kpi-label">Daily Solar Harvest</span><span class="kpi-value" id="s24-out-solar">--</span><span class="kpi-sub">Real-world 80% MPPT yield</span></div>
+              <div class="kpi-box"><span class="kpi-label">Lowest SoC Reached</span><span class="kpi-value" id="s24-out-min">--</span><span class="kpi-sub">Before sunrise recharge</span></div>
+              <div class="kpi-box"><span class="kpi-label">End-of-Day Charge</span><span class="kpi-value" id="s24-out-end">--</span><span class="kpi-sub">At 6:00 AM next morning</span></div>
+            </div>
+          </section>
+        </article>
+      `
+    }),
+    sitemapUrls
+  );
+
+  // TOOL 2: Multi-Day Storm Fuel Burn & Transfer Switch Cord Calculator
+  writePage(
+    'tools/generator-fuel-calculator',
+    renderLayout({
+      title: `Generator Fuel Consumption Calculator (Gas Gallons, 20lb Propane Tanks & Transfer Cord) — ${SITE_NAME}`,
+      description: `Calculate exact multi-day blackout fuel reserves in Gasoline Gallons and 20 lb BBQ Propane Tanks plus the required L14-30 or SS2-50 generator inlet cord gauge.`,
+      canonicalPath: 'tools/generator-fuel-calculator',
+      breadcrumbs: [
+        { label: 'Home', url: '/' },
+        { label: 'Power Tools', url: '/tools/generator-fuel-calculator/' },
+        { label: 'Storm Fuel & Cord Calculator', url: '/tools/generator-fuel-calculator/' }
+      ],
+      schemaJson: [
+        { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Multi-Day Generator Fuel & Transfer Cord Calculator', url: `${SITE_URL}/tools/generator-fuel-calculator/`, applicationCategory: 'UtilitiesApplication' },
+        { '@context': 'https://schema.org', '@type': 'Dataset', name: 'Generator Fuel Burn & Inlet Cord Sizing Matrix', description: 'Gasoline and propane fuel consumption per kWh for inverter and open-frame generators.', url: `${SITE_URL}/tools/generator-fuel-calculator/`, isAccessibleForFree: true, license: 'https://creativecommons.org/licenses/by/4.0/', creator: datasetCreator }
+      ],
+      totalPagesCount,
+      mainContent: `
+        <article id="hero-panel" class="panel isolated-widget">
+          <span class="brand-badge">HURRICANE &amp; ICE-STORM FUEL PLANNER</span>
+          <h1>Multi-Day Generator Fuel Burn &amp; Transfer Switch Cord Calculator</h1>
+          <p class="subtitle">Calculate how many <strong>5-gallon gas cans</strong> or <strong>20 lb propane tanks</strong> you need to survive a 1-to-7 day blackout—plus the safe outdoor extension cord and 30A/50A inlet box gauge.</p>
+
+          <section id="tool-fuel-calc">
+            <div class="tool-input-grid">
+              <div class="tool-field"><label for="fc-type">Generator Type</label>
+                <select id="fc-type">
+                  <option value="inverter" selected>Inverter Generator (Eco-Throttle — Honda, Predator, Champion)</option>
+                  <option value="open">Open-Frame 3600 RPM Generator (Generac GP, Contractor)</option>
+                </select>
+              </div>
+              <div class="tool-field"><label for="fc-watts">Average Running Load (Watts)</label><input id="fc-watts" type="number" min="200" max="12000" step="100" value="1800"></div>
+              <div class="tool-field"><label for="fc-hrs">Run Hours Per Day (4–24 hrs)</label><input id="fc-hrs" type="number" min="2" max="24" value="14"></div>
+              <div class="tool-field"><label for="fc-days">Blackout Duration (Days): <strong id="fc-days-val">3 Days</strong></label><input id="fc-days" type="range" min="1" max="10" value="3"></div>
+            </div>
+
+            <div class="spec-kpi-grid">
+              <div class="kpi-box highlight"><span class="kpi-label">Total Gasoline Needed</span><span class="kpi-value" id="fc-out-gas">--</span><span class="kpi-sub" id="fc-out-cans">-- × 5-gal cans</span></div>
+              <div class="kpi-box highlight"><span class="kpi-label">20 lb Propane Tanks</span><span class="kpi-value" id="fc-out-lp">--</span><span class="kpi-sub">4.7 gal usable LP / tank</span></div>
+              <div class="kpi-box"><span class="kpi-label">Hourly Burn Rate</span><span class="kpi-value" id="fc-out-gph">--</span><span class="kpi-sub">Gas gal / hr at load</span></div>
+              <div class="kpi-box"><span class="kpi-label">Required Transfer Cord</span><span class="kpi-value" id="fc-out-cord">--</span><span class="kpi-sub"><a href="https://wiresizematrix.com" rel="noopener">Verify wire on WireSizeMatrix →</a></span></div>
+            </div>
+          </section>
+        </article>
+      `
+    }),
+    sitemapUrls
+  );
+
+  // TOOL 3: Smart Power Station & Generator Upgrade Auto-Finder
+  const compactUnits = powerUnits.map((u) => ({
+    name: u.name,
+    slug: u.slug,
+    brand: u.brand,
+    type: u.type,
+    wh: u.capacityWh,
+    cont: u.continuousWatts,
+    surge: u.surgeWatts,
+    price: u.priceUsd
+  }));
+  writePage(
+    'tools/power-station-finder',
+    renderLayout({
+      title: `Smart Power Station & Generator Auto-Finder (Filter by Surge Watts, Runtime & Budget) — ${SITE_NAME}`,
+      description: `Enter your exact running watts, peak starting surge watts, desired runtime hours, and max budget to auto-rank all ${powerUnits.length} power stations and generators by lowest cost per Wh.`,
+      canonicalPath: 'tools/power-station-finder',
+      breadcrumbs: [
+        { label: 'Home', url: '/' },
+        { label: 'Power Tools', url: '/tools/power-station-finder/' },
+        { label: 'Upgrade Auto-Finder', url: '/tools/power-station-finder/' }
+      ],
+      schemaJson: [
+        { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Power Station & Generator Surge Auto-Finder', url: `${SITE_URL}/tools/power-station-finder/`, applicationCategory: 'UtilitiesApplication' },
+        { '@context': 'https://schema.org', '@type': 'Dataset', name: 'Power Station & Inverter Generator Sizing Catalog', description: `Filterable database of ${powerUnits.length} LiFePO4 power stations and inverter generators ranked by surge capacity and price per Wh.`, url: `${SITE_URL}/tools/power-station-finder/`, isAccessibleForFree: true, license: 'https://creativecommons.org/licenses/by/4.0/', creator: datasetCreator }
+      ],
+      totalPagesCount,
+      mainContent: `
+        <article id="hero-panel" class="panel isolated-widget">
+          <span class="brand-badge">AUTO-RANKED BY SURGE PASS &amp; $/WH VALUE</span>
+          <h1>Smart Power Station &amp; Generator Upgrade Finder</h1>
+          <p class="subtitle">Tripped an overload on a smaller battery? Enter your <strong>Continuous Running Watts</strong>, <strong>Peak Inrush Surge</strong>, and <strong>Max Budget</strong> to instantly filter all ${powerUnits.length} tested EcoFlow, Jackery, Anker, Bluetti, Honda &amp; Predator units.</p>
+
+          <section id="tool-unit-finder">
+            <script type="application/json" id="finder-units-json">${JSON.stringify(compactUnits)}</script>
+            <div class="tool-input-grid">
+              <div class="tool-field"><label for="uf-run">Required Continuous Watts (W)</label><input id="uf-run" type="number" min="50" max="8000" step="50" value="800"></div>
+              <div class="tool-field"><label for="uf-surge">Required Starting Surge (W)</label><input id="uf-surge" type="number" min="100" max="12000" step="100" value="2200"></div>
+              <div class="tool-field"><label for="uf-hrs">Target Runtime (Hours)</label><input id="uf-hrs" type="number" min="1" max="72" value="8"></div>
+              <div class="tool-field"><label for="uf-budget">Max Budget ($ USD)</label><input id="uf-budget" type="number" min="200" max="10000" step="100" value="2500"></div>
+              <div class="tool-field"><label for="uf-type">Unit Type</label>
+                <select id="uf-type">
+                  <option value="all" selected>All (LiFePO4 Batteries + Gas Generators)</option>
+                  <option value="Portable Power Station">Indoor-Safe Battery Power Stations Only</option>
+                  <option value="Generator">Gas / Dual-Fuel Generators Only</option>
+                </select>
+              </div>
+            </div>
+            <div id="uf-count" style="font-family:var(--font-mono);font-size:0.84rem;font-weight:700;margin:0.6rem 0;"></div>
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>Passing Model</th><th>Continuous / Surge</th><th>Battery Wh</th><th>Est. Price</th><th>Est. Runtime</th></tr></thead>
+                <tbody id="uf-results-body"></tbody>
+              </table>
+            </div>
+          </section>
+        </article>
+      `
+    }),
+    sitemapUrls
+  );
+
+  // TOOL 4: Auto-Saved Fridge-Door Emergency Power & Storm Prep Checklist
+  const stormItems = [
+    ['charge', 'Top off LiFePO4 power stations to 100% (or maintain 80% storage SoC between storms)'],
+    ['sump', 'Test-run 1/2 HP Sump Pump or Fridge compressor startup surge on your backup unit BEFORE storm hits'],
+    ['cords', 'Stage heavy-duty 12 AWG outdoor-rated extension cords (never run 16 AWG orange cords on space heaters/fridges)'],
+    ['co', 'Verify battery-backed Carbon Monoxide (CO) alarms on every floor; keep gas generators 20+ ft from windows/doors'],
+    ['fuel', 'Rotate stabilized gasoline cans (STA-BIL) and confirm 2+ full 20 lb propane cylinders'],
+    ['oil', 'Check generator engine oil level and keep 1 spare quart of 10W-30 + spark plug wrench in kit'],
+    ['solar', 'Inspect foldable solar panels, MC4-to-XT60 cables, and clear sunny staging area'],
+    ['cpap', 'Pack 12V DC adapter cable for CPAP machine (saves 25%–35% battery vs AC inverter conversion)'],
+    ['freeze', 'Freeze 4 one-gallon water jugs to keep chest freezer/fridge cold for 24+ hours if power drops'],
+    ['interlock', 'Test main-panel interlock kit or transfer switch sequence and tape this sheet inside breaker box door']
+  ];
+  writePage(
+    'tools/storm-prep-checklist',
+    renderLayout({
+      title: `Emergency Blackout & Storm Power Prep Checklist (Printable Breaker-Box Sheet) — ${SITE_NAME}`,
+      description: `Auto-saved 10-point hurricane, winter ice-storm, and blackout power readiness checklist with one-click print formatting for your breaker box door.`,
+      canonicalPath: 'tools/storm-prep-checklist',
+      breadcrumbs: [
+        { label: 'Home', url: '/' },
+        { label: 'Power Tools', url: '/tools/storm-prep-checklist/' },
+        { label: 'Storm Prep Checklist', url: '/tools/storm-prep-checklist/' }
+      ],
+      schemaJson: { '@context': 'https://schema.org', '@type': 'WebApplication', name: 'Emergency Blackout & Storm Power Prep Checklist', url: `${SITE_URL}/tools/storm-prep-checklist/`, applicationCategory: 'UtilitiesApplication' },
+      totalPagesCount,
+      mainContent: `
+        <article id="hero-panel" class="panel isolated-widget">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:0.5rem;">
+            <div>
+              <span class="brand-badge">BOOKMARK FOR STORM SEASON</span>
+              <h1 style="margin-block-end:0.25rem;">10-Point Fridge-Door Blackout &amp; Generator Readiness Checklist</h1>
+            </div>
+            <div style="display:flex;gap:0.45rem;flex-wrap:wrap;">
+              <button type="button" id="btn-reset-storm-check" class="preset-btn">↺ Reset for Next Storm</button>
+              <button type="button" onclick="window.print()" class="plans-btn">⎙ Print Breaker-Box Sheet</button>
+            </div>
+          </div>
+          <p class="subtitle">Check off your backup power readiness steps whenever severe weather is in the forecast. Your progress saves automatically in your browser.</p>
+          <div class="verdict-banner" id="storm-check-banner" data-status="warn" role="status">
+            <div class="verdict-title"><span id="storm-check-status">0 / 10 Readiness Checks Complete</span><span class="badge badge-warn" id="storm-check-badge">PREPARING</span></div>
+          </div>
+          <div id="tool-storm-checklist">
+            ${stormItems.map(([id, text], idx) => `
+              <div class="checklist-row" data-chk-id="${id}">
+                <input type="checkbox" id="schk-${id}" style="margin-top:0.2rem;transform:scale(1.2);">
+                <label for="schk-${id}"><strong>${idx + 1}.</strong> ${text}</label>
+              </div>`).join('')}
+          </div>
+        </article>
+      `
+    }),
+    sitemapUrls
+  );
+}
+
 function runBuild() {
   const startTime = Date.now();
   if (fs.existsSync(DIST_DIR)) {
@@ -1713,7 +1989,7 @@ function runBuild() {
   const unitComparisons = generateUnitComparisons();
   const canItRunPairs = generateCanItRunPairs();
   const brandsCount = new Set(powerUnits.map((u) => u.brand)).size;
-  const totalPagesCount = 5 + appliances.length + powerUnits.length + canItRunPairs.length + unitComparisons.length + brandsCount;
+  const totalPagesCount = 9 + appliances.length + powerUnits.length + canItRunPairs.length + unitComparisons.length + brandsCount;
 
   buildHomepage(unitComparisons, canItRunPairs, sitemapUrls, totalPagesCount);
   buildAppliancePages(canItRunPairs, sitemapUrls, totalPagesCount);
@@ -1721,6 +1997,7 @@ function runBuild() {
   buildCanItRunPages(canItRunPairs, sitemapUrls, totalPagesCount);
   buildUnitComparisonPages(unitComparisons, sitemapUrls, totalPagesCount);
   buildBrandPages(sitemapUrls, totalPagesCount);
+  buildDedicatedPowerToolPages(sitemapUrls, totalPagesCount);
   buildComplianceAndEdgeFiles(sitemapUrls, totalPagesCount);
 
   const elapsedMs = Date.now() - startTime;

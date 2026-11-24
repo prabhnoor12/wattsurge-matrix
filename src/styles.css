@@ -1107,3 +1107,105 @@ tbody tr {
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================================
+   BLACKOUT PLANS BINDER, NEXT-STEP TOOL STRIP & DEDICATED TOOL PAGE STYLES
+   ========================================================================= */
+.plans-btn {
+  background: var(--brand, #0369a1);
+  color: #ffffff;
+  border: 1px solid var(--brand, #0369a1);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.3rem 0.6rem;
+  min-block-size: 34px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.plans-btn:hover { opacity: 0.92; }
+
+.next-tools-bar {
+  margin-block-start: 1rem;
+  padding: 0.85rem;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+}
+.next-tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(195px, 1fr));
+  gap: 0.55rem;
+  margin-block-start: 0.5rem;
+}
+.next-tool-link {
+  display: block;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.79rem;
+}
+.next-tool-link:hover { border-color: var(--brand, #0369a1); }
+.next-tool-link strong { display: block; font-size: 0.82rem; margin-block-end: 0.15rem; }
+
+.sister-widget {
+  margin-block-start: 1rem;
+  padding: 0.9rem;
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+}
+.sister-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.6rem;
+  margin-block-start: 0.55rem;
+}
+.sister-card {
+  display: block;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-alt);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.sister-card:hover { border-color: var(--brand, #0369a1); }
+.sister-card strong { display: block; margin-block-end: 0.2rem; font-size: 0.84rem; }
+
+.binder-backdrop {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); z-index: 90; display: none;
+}
+.binder-backdrop.open { display: block; }
+.binder-drawer {
+  position: fixed; top: 0; right: 0; bottom: 0; inline-size: min(410px, 92vw);
+  background: var(--surface); border-inline-start: 2px solid var(--text); z-index: 100;
+  padding: 1rem; overflow-y: auto; transform: translateX(100%); transition: transform 0.22s ease;
+}
+.binder-drawer.open { transform: translateX(0); }
+.binder-item {
+  border: 1px solid var(--border-strong); background: var(--surface-alt);
+  padding: 0.65rem; margin-block-end: 0.6rem; font-size: 0.82rem;
+}
+.checklist-row {
+  display: flex; align-items: flex-start; gap: 0.65rem;
+  padding: 0.6rem 0; border-block-end: 1px dashed var(--border-strong); font-size: 0.88rem;
+}
+.checklist-row.done label { text-decoration: line-through; opacity: 0.6; }
+.tool-input-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; margin: 0.85rem 0;
+}
+.tool-field label { display: block; font-size: 0.8rem; font-weight: 700; margin-block-end: 0.3rem; }
+.tool-field input, .tool-field select {
+  inline-size: 100%; padding: 0.5rem 0.65rem; font-family: var(--font-mono);
+  font-size: 0.9rem; border: 1px solid var(--border-strong); background: var(--surface-alt); color: var(--text);
+}
+.soc-svg-wrap {
+  background: var(--surface-alt); border: 1px solid var(--border-strong); padding: 0.75rem; margin: 0.85rem 0;
+}
+.soc-svg-wrap svg { width: 100%; height: auto; display: block; }
+@media print {
+  .binder-drawer, .binder-backdrop, .plans-btn, .next-tools-bar, .sister-widget { display: none !important; }
+}

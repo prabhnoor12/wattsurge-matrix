@@ -697,6 +697,235 @@ hudState.textContent = userIsEngaged ? 'ACTIVE VIEW (TIMER RUNNING)' : 'IDLE (PA
 }
 }, 1000);
 }
+function initWattSurgeRetentionAndTools() {
+const PLANS_KEY = 'wattsurge-plans-v1';
+const getPlans = () => { try { return JSON.parse(localStorage.getItem(PLANS_KEY) || '[]'); } catch (_) { return []; } };
+const setPlans = (arr) => { try { localStorage.setItem(PLANS_KEY, JSON.stringify(arr)); } catch (_) {} };
+const drawer = document.getElementById('plans-drawer');
+const backdrop = document.getElementById('plans-backdrop');
+const countEl = document.getElementById('plans-count');
+const listEl = document.getElementById('plans-items-list');
+const renderPlans = () => {
+const items = getPlans();
+if (countEl) countEl.textContent = String(items.length);
+if (!listEl) return;
+if (!items.length) {
+listEl.innerHTML = '<p style="font-size:0.82rem;color:var(--text-muted);">No blackout plans saved yet. Click <strong>📌 Save Blackout Plan</strong> on any calculator to bookmark your emergency setup.</p>';
+return;
+}
+listEl.innerHTML = items.map((it, i) => `
+<div class="binder-item">
+<strong>${it.label}</strong>
+<div style="font-family:var(--font-mono);margin-block-start:0.25rem;">${it.spec}</div>
+<div style="font-size:0.74rem;color:var(--text-muted);">Saved ${it.date}</div>
+<div style="display:flex;gap:0.4rem;margin-block-start:0.45rem;">
+<a href="${it.url}" class="preset-btn" style="text-decoration:none;">Open Plan →</a>
+<button type="button" class="preset-btn" data-del-plan="${i}">Delete</button>
+</div>
+</div>`).join('');
+};
+const openDrawer = () => { drawer?.classList.add('open'); backdrop?.classList.add('open'); renderPlans(); };
+const closeDrawer = () => { drawer?.classList.remove('open'); backdrop?.classList.remove('open'); };
+document.getElementById('btn-open-plans')?.addEventListener('click', openDrawer);
+document.getElementById('btn-close-plans')?.addEventListener('click', closeDrawer);
+backdrop?.addEventListener('click', closeDrawer);
+document.getElementById('btn-save-plan')?.addEventListener('click', () => {
+const calc = document.getElementById('surge-calculator');
+const unit = calc?.dataset.unitName || 'Power Station';
+const rt = document.getElementById('out-real-runtime')?.textContent || '';
+const label = window.prompt('Name this Blackout / RV Power Plan (e.g., Hurricane Fridge + Starlink):', unit);
+if (!label) return;
+const items = getPlans();
+items.unshift({ label: label.trim(), spec: `${unit} • Runtime: ${rt}`, url: window.location.pathname, date: new Date().toLocaleDateString() });
+setPlans(items.slice(0, 20));
+renderPlans();
+openDrawer();
+});
+listEl?.addEventListener('click', (e) => {
+const del = e.target.closest('button[data-del-plan]');
+if (!del) return;
+const items = getPlans();
+items.splice(Number(del.dataset.delPlan), 1);
+setPlans(items);
+renderPlans();
+});
+renderPlans();
+const s24Root = document.getElementById('tool-24h-blackout');
+if (s24Root) {
+const p = new URLSearchParams(window.location.search);
+if (p.get('wh')) document.getElementById('s24-wh').value = p.get('wh');
+if (p.get('run')) document.getElementById('s24-day-w').value = p.get('run');
+if (p.get('name')) {
+const b = document.getElementById('sim24-unit-badge');
+if (b) b.textContent = `Pre-loaded Battery: ${p.get('name')} (${p.get('wh') || ''} Wh)`;
+}
+const sync24 = () => {
+const capWh = Math.max(200, Number(document.getElementById('s24-wh')?.value || 2048));
+const usableCap = capWh * 0.92;
+const dayW = Math.max(5, Number(document.getElementById('s24-day-w')?.value || 180));
+const nightW = Math.max(5, Number(document.getElementById('s24-night-w')?.value || 110));
+const solarW = Math.max(0, Number(document.getElementById('s24-solar')?.value || 400));
+const sunHrs = Math.max(0, Number(document.getElementById('s24-sun')?.value || 4.5));
+const startPct = Math.min(100, Math.max(10, Number(document.getElementById('s24-start')?.value || 100)));
+document.getElementById('s24-solar-val').textContent = `${solarW}W`;
+document.getElementById('s24-sun-val').textContent = `${sunHrs} hrs`;
+const dailySolarWh = Math.round(solarW * sunHrs * 0.80);
+const solarPerWindowHr = dailySolarWh / 6; // spread over 10 AM – 4 PM (hours 4..9 from 6 AM)
+let wh = usableCap * (startPct / 100);
+let minPct = startPct;
+let deadHr = -1;
+let totalBurn = 0;
+const pts = [];
+for (let h = 0; h <= 24; h++) {
+const pct = Math.max(0, Math.min(100, (wh / usableCap) * 100));
+if (pct < minPct) minPct = pct;
+const x = 45 + (h / 24) * 575;
+const y = 175 - (pct / 100) * 155;
+pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+if (h < 24) {
+const isDay = h < 16; // 6 AM to 10 PM
+const acDrawWh = (isDay ? dayW : nightW) / 0.85;
+totalBurn += acDrawWh;
+const inSolar = h >= 4 && h < 10 ? solarPerWindowHr : 0;
+wh = Math.max(0, Math.min(usableCap, wh - acDrawWh + inSolar));
+if (wh <= 0 && deadHr === -1) deadHr = h + 1;
+}
+}
+const endPct = Math.round((wh / usableCap) * 100);
+document.getElementById('s24-curve')?.setAttribute('points', pts.join(' '));
+document.getElementById('s24-out-burn').textContent = `${fmtNum.format(Math.round(totalBurn))} Wh`;
+document.getElementById('s24-out-solar').textContent = `${fmtNum.format(dailySolarWh)} Wh`;
+document.getElementById('s24-out-min').textContent = `${Math.round(minPct)}%`;
+document.getElementById('s24-out-end').textContent = `${endPct}%`;
+const vb = document.getElementById('s24-verdict');
+const vt = document.getElementById('s24-verdict-title');
+const vbg = document.getElementById('s24-verdict-badge');
+const vd = document.getElementById('s24-verdict-desc');
+if (deadHr !== -1) {
+vb.dataset.status = 'danger'; vbg.className = 'badge badge-danger'; vbg.textContent = `DEPLETES AT HR ${deadHr}`;
+vt.textContent = `BATTERY RUNS DEAD AFTER ${deadHr} HOURS (BEFORE NEXT SUNRISE)`;
+vd.textContent = `Daily burn (${fmtNum.format(Math.round(totalBurn))} Wh) exceeds battery + solar input (${fmtNum.format(dailySolarWh)} Wh). Add an expansion battery or +400W solar panels.`;
+} else if (dailySolarWh >= totalBurn) {
+vb.dataset.status = 'safe'; vbg.className = 'badge badge-safe'; vbg.textContent = 'INFINITE SOLAR LOOP';
+vt.textContent = `NET INFINITE RUNTIME — SURVIVES 24H WITH ${endPct}% CHARGE REMAINING`;
+vd.textContent = `Solar harvest (${fmtNum.format(dailySolarWh)} Wh/day) matches or beats your 24-hour energy burn (${fmtNum.format(Math.round(totalBurn))} Wh/day).`;
+} else {
+vb.dataset.status = 'warn'; vbg.className = 'badge badge-warn'; vbg.textContent = `SURVIVES 24H (${endPct}% LEFT)`;
+vt.textContent = `SURVIVES DAY 1 (${endPct}% AT 6 AM) — MULTI-DAY DEFICIT`;
+vd.textContent = `You make it through the first 24 hours, losing ${fmtNum.format(Math.round(totalBurn - dailySolarWh))} Wh net per day. Add solar or recharge via car/generator on Day 2.`;
+}
+};
+s24Root.querySelectorAll('input').forEach((el) => el.addEventListener('input', sync24));
+sync24();
+}
+const fcRoot = document.getElementById('tool-fuel-calc');
+if (fcRoot) {
+const p = new URLSearchParams(window.location.search);
+if (p.get('watts')) document.getElementById('fc-watts').value = p.get('watts');
+const syncFuel = () => {
+const type = document.getElementById('fc-type')?.value || 'inverter';
+const watts = Math.max(200, Number(document.getElementById('fc-watts')?.value || 1800));
+const hrs = Math.min(24, Math.max(1, Number(document.getElementById('fc-hrs')?.value || 14)));
+const days = Math.max(1, Number(document.getElementById('fc-days')?.value || 3));
+document.getElementById('fc-days-val').textContent = `${days} Day${days === 1 ? '' : 's'}`;
+const gph = type === 'inverter' ? 0.08 + (watts / 1000) * 0.13 : 0.30 + (watts / 1000) * 0.16;
+const totalGas = gph * hrs * days;
+const cans = Math.ceil(totalGas / 5);
+const lpTanks = Math.ceil((totalGas * 1.35) / 4.6);
+const cord = watts <= 1800 ? '12 AWG (15A/20A)' : watts <= 3600 ? '10 AWG L14-30 (30A)' : watts <= 7200 ? '10/8 AWG L14-30 (30A)' : '6 AWG SS2-50 (50A)';
+document.getElementById('fc-out-gas').textContent = `${totalGas.toFixed(1)} gal`;
+document.getElementById('fc-out-cans').textContent = `${cans} × 5-gallon gas cans`;
+document.getElementById('fc-out-lp').textContent = `${lpTanks} Tanks`;
+document.getElementById('fc-out-gph').textContent = `${gph.toFixed(2)} gal/hr`;
+document.getElementById('fc-out-cord').textContent = cord;
+};
+fcRoot.querySelectorAll('input, select').forEach((el) => { el.addEventListener('input', syncFuel); el.addEventListener('change', syncFuel); });
+syncFuel();
+}
+const ufRoot = document.getElementById('tool-unit-finder');
+if (ufRoot) {
+const p = new URLSearchParams(window.location.search);
+if (p.get('run')) document.getElementById('uf-run').value = p.get('run');
+if (p.get('surge')) document.getElementById('uf-surge').value = p.get('surge');
+let allUnits = [];
+try { allUnits = JSON.parse(document.getElementById('finder-units-json')?.textContent || '[]'); } catch (_) {}
+const syncFinder = () => {
+const reqRun = Number(document.getElementById('uf-run')?.value || 800);
+const reqSurge = Number(document.getElementById('uf-surge')?.value || 2200);
+const reqHrs = Number(document.getElementById('uf-hrs')?.value || 8);
+const maxBudget = Number(document.getElementById('uf-budget')?.value || 2500);
+const typeFilter = document.getElementById('uf-type')?.value || 'all';
+const matches = allUnits
+.filter((u) => {
+if (u.cont < reqRun || u.surge < reqSurge) return false;
+if (u.price > maxBudget) return false;
+if (typeFilter === 'Portable Power Station' && !u.type.includes('Station') && !u.type.includes('Battery')) return false;
+if (typeFilter === 'Generator' && !u.type.includes('Generator')) return false;
+return true;
+})
+.sort((a, b) => (a.price / Math.max(1, a.wh)) - (b.price / Math.max(1, b.wh)));
+document.getElementById('uf-count').textContent = `${matches.length} Passing Units Found (Sorted by Best Value / $/Wh)`;
+const tbody = document.getElementById('uf-results-body');
+if (!tbody) return;
+if (!matches.length) {
+tbody.innerHTML = '<tr><td colspan="5">No units match all criteria. Increase Max Budget or check Soft-Start to cut surge watts by 58%.</td></tr>';
+return;
+}
+tbody.innerHTML = matches.slice(0, 25).map((u) => {
+const hrs = u.wh > 0 ? ((u.wh * 0.785) / Math.max(1, reqRun)).toFixed(1) + ' hrs' : 'Fuel-Fed (Continuous)';
+const meetsHrs = u.wh === 0 || (u.wh * 0.785) / Math.max(1, reqRun) >= reqHrs;
+return `<tr>
+<th scope="row"><a href="/generators/${u.slug}/">${u.name}</a></th>
+<td>${fmtNum.format(u.cont)}W / <strong>${fmtNum.format(u.surge)}W</strong></td>
+<td>${u.wh > 0 ? fmtNum.format(u.wh) + ' Wh' : 'Gas/Dual-Fuel'}</td>
+<td><strong>$${fmtNum.format(u.price)}</strong></td>
+<td><span class="badge ${meetsHrs ? 'badge-safe' : 'badge-warn'}">${hrs}</span></td>
+</tr>`;
+}).join('');
+};
+ufRoot.querySelectorAll('input, select').forEach((el) => { el.addEventListener('input', syncFinder); el.addEventListener('change', syncFinder); });
+syncFinder();
+}
+const chkRoot = document.getElementById('tool-storm-checklist');
+if (chkRoot) {
+const CHK_KEY = 'wattsurge-storm-check-v1';
+const rows = Array.from(chkRoot.querySelectorAll('.checklist-row'));
+let saved = {};
+try { saved = JSON.parse(localStorage.getItem(CHK_KEY) || '{}'); } catch (_) {}
+const syncChk = () => {
+let done = 0;
+const next = {};
+rows.forEach((r) => {
+const id = r.dataset.chkId;
+const box = r.querySelector('input[type="checkbox"]');
+if (box?.checked) { done++; r.classList.add('done'); } else r.classList.remove('done');
+next[id] = !!box?.checked;
+});
+const banner = document.getElementById('storm-check-banner');
+const st = document.getElementById('storm-check-status');
+const bg = document.getElementById('storm-check-badge');
+if (st) st.textContent = `${done} / ${rows.length} Storm Power Checks Complete`;
+if (banner && bg) {
+if (done === rows.length) {
+banner.dataset.status = 'safe'; bg.className = 'badge badge-safe'; bg.textContent = 'STORM READY';
+} else {
+banner.dataset.status = 'warn'; bg.className = 'badge badge-warn'; bg.textContent = 'PREPARING';
+}
+}
+try { localStorage.setItem(CHK_KEY, JSON.stringify(next)); } catch (_) {}
+};
+rows.forEach((r) => {
+const box = r.querySelector('input[type="checkbox"]');
+if (saved[r.dataset.chkId] && box) box.checked = true;
+box?.addEventListener('change', syncChk);
+});
+document.getElementById('btn-reset-storm-check')?.addEventListener('click', () => {
+rows.forEach((r) => { const b = r.querySelector('input[type="checkbox"]'); if (b) b.checked = false; });
+syncChk();
+});
+syncChk();
+}
+}
 document.addEventListener('DOMContentLoaded', () => {
 initThemeToggle();
 initQuickJumpSearch();
@@ -704,5 +933,6 @@ initSurgeCalculator();
 initSortableTables();
 initDirectoryFilter();
 initAdOpsEngine();
+initWattSurgeRetentionAndTools();
 });
 })();
