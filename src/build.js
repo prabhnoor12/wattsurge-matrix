@@ -314,6 +314,14 @@ function renderLayout({ title, description, canonicalPath, breadcrumbs, schemaJs
   <script>try{document.querySelector('meta[name="color-scheme"]').content=localStorage.getItem("color-scheme")??"light dark"}catch(e){}</script>
   <title>${title}</title>
   <meta name="description" content="${description}">
+  <meta name="application-name" content="${SITE_NAME}">
+  <meta property="og:site_name" content="${SITE_NAME}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:url" content="${canonicalUrl}">
+  <meta property="og:type" content="website">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="manifest" href="/manifest.json">
   <link rel="canonical" href="${canonicalUrl}">
   <link rel="dns-prefetch" href="//securepubads.g.doubleclick.net">
   <link rel="dns-prefetch" href="//pagead2.googlesyndication.com">
@@ -579,8 +587,14 @@ function buildCanItRunPages(canItRunPairs, sitemapUrls, totalPagesCount) {
           <span class="brand-badge">CAN IT RUN? • INRUSH SURGE & RUNTIME TEST</span>
           <span style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text-muted);">${u.brand} ${u.type} × ${a.category}</span>
         </div>
-        <h1>Can a ${u.name} Run a ${a.name}? — ${verdictWord}</h1>
-        <p class="subtitle">Verified starting surge vs. inverter overload analysis and real-world runtime calculation (factoring in <strong>85% AC inverter efficiency</strong>, <strong>92% BMS reserve</strong>, and a <strong>${a.dutyCyclePct}% appliance duty cycle</strong>).</p>
+        <h1>Can a ${u.name.split(' (')[0]} Run a ${a.name}? [Surge &amp; Runtime Test]</h1>
+        <p class="subtitle">A ${a.name} draws <strong>${fmt.format(a.runningWatts)}W running</strong>, but demands a <strong>${fmt.format(a.surgeWatts)}W starting surge</strong> against the ${u.name.split(' (')[0]}'s <strong>${fmt.format(u.surgeWatts)}W surge ceiling</strong> (factoring in 85% AC inverter efficiency &amp; ${a.dutyCyclePct}% duty cycle).</p>
+        <nav class="year-pill-bar" aria-label="On-Page Jump Sections" style="margin-block-end:0.45rem;">
+          <strong style="font-family:var(--font-mono);font-size:0.74rem;margin-inline-end:0.25rem;">JUMP TO:</strong>
+          <a href="#surge-calculator" class="year-pill">⚡ Multi-Appliance Stacker</a>
+          <a href="#runtime-math" class="year-pill">📐 Real Runtime Math</a>
+          <a href="/tools/24-hour-blackout-simulator/?wh=${u.capacityWh}&amp;run=${a.runningWatts}" class="year-pill">📈 24h Solar Curve</a>
+        </nav>
 
         <div class="spec-kpi-grid">
           <div class="kpi-box highlight">
@@ -722,7 +736,7 @@ function buildCanItRunPages(canItRunPairs, sitemapUrls, totalPagesCount) {
         </div>
       </section>
 
-      <section class="panel deferred-section">
+      <section class="panel deferred-section" id="runtime-math">
         <h2>Engineering Math: How Long Will the ${u.name} Run a ${a.name}?</h2>
         <p>A <strong>${a.name}</strong> draws <strong>${fmt.format(a.runningWatts)} continuous running watts</strong> and demands a <strong>${fmt.format(a.surgeWatts)}-watt starting inrush surge</strong> (${a.motorType}) when cycling on. With a typical <strong>${a.dutyCyclePct}% duty cycle</strong>, it consumes an average of <strong>${fmt.format(avgHourlyWh)} Wh per hour</strong>.</p>
         <pre style="background:var(--surface-alt);border:1px solid var(--border-strong);padding:0.75rem;overflow-x:auto;font-family:var(--font-mono);font-size:0.82rem;">Net Usable Battery Energy = ${fmt.format(u.capacityWh)} Wh × 0.85 (AC Inverter Efficiency) × 0.923 (BMS Cutoff Reserve) = ${fmt.format(usableWh)} Wh
@@ -756,8 +770,8 @@ Real-World Runtime         = ${fmt.format(usableWh)} Wh ÷ ${fmt.format(avgHourl
     `;
 
     const html = renderLayout({
-      title: `Can a ${u.name.split(' (')[0]} Run a ${a.name}? (${runtimeStr} Runtime & ${fmt.format(a.surgeWatts)}W Surge Test)`,
-      description: `Find out if the ${u.name} can start and run a ${a.name} (${fmt.format(a.runningWatts)}W running / ${fmt.format(a.surgeWatts)}W starting surge). Includes real-world runtime (${runtimeStr}) and multi-appliance load stacker.`,
+      title: `Can a ${u.name.split(' (')[0]} Run a ${a.name}? [Surge & Runtime Test]`,
+      description: `A ${a.name} uses ${fmt.format(a.runningWatts)}W running, but demands a ${fmt.format(a.surgeWatts)}W starting surge vs the ${u.name.split(' (')[0]}'s ${fmt.format(u.surgeWatts)}W limit! See exact blackout hours & overload test →`,
       canonicalPath: `can-it-run/${slug}`,
       breadcrumbs: [
         { label: 'Home', url: '/' },
@@ -1697,6 +1711,16 @@ function buildComplianceAndEdgeFiles(sitemapUrls, totalPagesCount) {
   fs.writeFileSync(
     path.join(DIST_DIR, 'ads.txt'),
     '# WattSurgeMatrix Authorized Digital Sellers (IAB ads.txt)\n# google.com, pub-0000000000000000, DIRECT, f08c47fec0942fa0\n',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'favicon.svg'),
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#090d16"/><rect x="4" y="4" width="56" height="56" rx="10" fill="none" stroke="#38bdf8" stroke-width="3"/><text x="32" y="42" text-anchor="middle" fill="#fbbf24" font-family="monospace,sans-serif" font-size="26" font-weight="900">WS</text></svg>',
+    'utf8'
+  );
+  fs.writeFileSync(
+    path.join(DIST_DIR, 'manifest.json'),
+    JSON.stringify({ name: 'WattSurgeMatrix — Appliance Surge & Battery Runtime Calculator', short_name: 'WattSurge', start_url: '/', display: 'standalone', background_color: '#090d16', theme_color: '#0369a1', icons: [{ src: '/favicon.svg', sizes: 'any', type: 'image/svg+xml' }] }, null, 2),
     'utf8'
   );
 
